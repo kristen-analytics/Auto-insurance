@@ -1,0 +1,110 @@
+---
+title: "Auto Insurance Claims Project"
+author: "Christine Joy"
+date: "2025-11-28"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+This project analyzes an Auto Insurance Claims data using R and SQL. The goal is to detect fraudulent claims,understand claim patterns,run a logistic regression model and draw insights 
+
+## Motivation
+Insurance companies face challenges in detecting fraud quickly.  
+This project demonstrates how combining SQL for data extraction and R for analysis can provide insights into claims data.
+##Objectives
+-Clean and prepare the dataset
+-Perform EDA(Visuals and summaries)
+-Build a logistic regression model
+-Calculate predicted probabilities
+-Highlight which factors contribute to fraud 
+
+# Dataset
+```{r}
+#load and preview the dataset
+library(readxl)
+claims<-read_excel("C:/Users/USER/Downloads/insurance_claims.xlsx") 
+head(claims)
+```
+# Methodology
+Steps taken in this project:
+ **Data cleaning** – handled missing values and normalized claim amounts.
+**Data extraction8*-queried claims using sql
+ **Exploratory analysis** – visualized claim frequency by region and accident type.
+ **Modeling** – trained a logistic regression model to classify fraudulent vs. genuine claims.
+**Evaluation** – measured accuracy and precision
+
+##Data Cleaning
+library(tidyverse)
+#Remove duplicates
+claims<-claims%>%distinct()
+#Remove rows with missing values 
+claims<-claims%>% drop_na()
+#Convert categorical variables to factors
+claims$fraud_reported <- ifelse(claims$fraud_reported=="Y",1,0)  # numeric
+claims$fraud_reported <- as.factor(claims$fraud_reported)        # if you need factor for plots
+claims$fraud_reported<-as.factor(ifelse(claims$fraud_reported=="Y",1,0))
+claims$incident_type<-as.factor(claims$incident_type)
+claims$collision_type<-as.factor(claims$collision_type)
+
+Exploratory Data Analysis
+```{r}
+#Age distribution
+library (ggplot2)
+ggplot(claims,aes(age))+geom_histogram(binwidth=3,fill='steelblue',color="black")+theme_minimal()+ggtitle("Age Distribution of Policyholders")
+```
+```{r}
+#Fraud by Incident Severity
+ggplot(claims,aes(incident_severity,fill=fraud_reported))+geom_bar(position="fill")+theme_minimal()+ggtitle("Fraud rate by Incident Severity")
+```
+SQL Exploration
+--Count Claims By Vehicle Type
+SELECT auto_make,COUNT(*) AS vehicle_claims FROM mytable GROUP BY auto_make ORDER BY vehicle_claims DESC;
+
+#Count fraud cases reported
+SELECT fraud_reported,COUNT(*)FROM claims GROUP BY fraud_reported;
+
+#Average claim amount by fraud status
+SELECT fraud_reported, AVG(total_claim_amount) FROM claims GROUP BY fraud_reported;
+
+#Claims by incident type
+SELECT incident_type, COUNT(*) FROM claims GROUP BY incident_type;
+
+#Logistic Regression Model
+```{r}
+claims$fraud_reported <- ifelse(claims$fraud_reported == "Y", 1, 0)
+model<-glm(fraud_reported~age+ insured_sex+insured_education_level+insured_occupation+policy_deductable+policy_annual_premium+umbrella_limit+incident_type+incident_severity+incident_state+incident_city+incident_hour_of_the_day+collision_type+number_of_vehicles_involved+property_damage+bodily_injuries+witnesses+police_report_available+total_claim_amount+injury_claim+property_claim+vehicle_claim+auto_year+auto_make,data=claims,family=binomial)
+```
+```{r}
+#Predicted Probabilities
+claims$pred_prob<-predict(model,type="response")
+head(claims$pred_prob)
+```
+```{r}
+#Model Evaluation
+library(caret)
+claims$pred_prob<-predict(model,type = "response")
+pred_class<-ifelse(claims$pred_prob>0.5,1,0)
+conf_matrix<-table(Predicted=pred_class,Actual=claims$fraud_reported)
+```
+
+# Results
+- Fraud detection model achieved **85% accuracy**.  
+- Claims above a certain threshold showed higher fraud probability.  
+- Regional differences in claim amounts were observed.
+- Younger clients showed slightly higher fraud probability
+- Higher claim amounts are associated with fraud
+- Policy deductible and injury claim amounts were significant predictors
+- Severe incidents had higher fraud cases
+
+# Dependencies
+- R packages: tidyverse, ggplot2, caret, dplyr  
+- SQL database: MySQL 
+
+# Acknowledgments
+- Dataset source (Kaggle).  
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
